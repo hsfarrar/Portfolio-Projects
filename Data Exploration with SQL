@@ -1,0 +1,115 @@
+## Data Exploration with SQL
+## Taking a look at Covid-19 data
+
+SELECT
+  location, date, total_cases, new_cases, total_deaths, population
+FROM
+  `portfolio-project-354521.covid_data.covid_deaths`
+ORDER BY
+  location, date;
+
+
+## Looking at total Cases vs. total deaths
+## Shows the probability of dying if you contract covid in any given country
+
+SELECT
+  location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 AS mortality_rate
+FROM
+  `portfolio-project-354521.covid_data.covid_deaths`
+ORDER BY
+  location, date;
+
+
+## Looking at total cases vs. population
+## Shows what percentage of population contracted covid
+
+SELECT
+  location, date, total_cases, population, (total_cases/population)*100 AS percent_infected
+FROM
+  `portfolio-project-354521.covid_data.covid_deaths`
+ORDER BY
+  location, date;
+
+
+## Looking at countries with highest infection rates compared to population
+
+SELECT
+  location, population, MAX(total_cases) AS max_cases, MAX((total_cases/population))*100 AS percent_infected
+FROM
+  `portfolio-project-354521.covid_data.covid_deaths`
+GROUP BY
+  location, population
+ORDER BY
+  percent_infected DESC;
+
+
+## Looking at countries with the highest deaths per capita
+
+SELECT
+  location, continent, MAX(CAST(total_deaths AS int)) AS total_deaths,
+FROM 
+  `portfolio-project-354521.covid_data.covid_deaths`
+WHERE 
+  continent IS NOT NULL
+GROUP BY
+  location, continent
+ORDER BY
+  total_deaths DESC;
+
+
+## Looking at deaths by continent
+
+SELECT
+  location AS continent, MAX(CAST(total_deaths AS int)) AS total_deaths,
+FROM 
+  `portfolio-project-354521.covid_data.covid_deaths`
+WHERE 
+  continent IS NULL 
+    AND location = "Africa"
+    OR location = "Asia"
+    OR location = "Europe"
+    OR location = "North America"
+    OR location = "South America"
+    OR location = "Oceania"
+GROUP BY
+  location, continent
+ORDER BY
+  total_deaths DESC;
+
+
+## Global Numbers
+
+SELECT
+  date, SUM(new_cases) AS new_cases, SUM(new_deaths) AS new_deaths , (SUM(new_deaths)/SUM(new_cases))*100 AS mortality_rate
+FROM
+  `portfolio-project-354521.covid_data.covid_deaths`
+WHERE
+  continent IS NOT NULL
+GROUP BY
+  date
+ORDER BY
+  date;
+
+
+## Looking at total population vs. vaccination
+WITH pop_vs_vac
+AS
+(
+SELECT
+  dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+  SUM(vac.new_vaccinations) OVER (PARTITION BY  dea.location ORDER BY dea.location ,dea.date) AS vaccinated_cumulative
+ FROM
+  `portfolio-project-354521.covid_data.covid_deaths` AS dea
+  
+JOIN
+  `portfolio-project-354521.covid_data.covid_vaccinations` AS vac
+  ON dea.location = vac.location
+  and dea.date =vac.date
+WHERE 
+  dea.continent IS NOT NULL
+)
+SELECT
+  *, (vaccinated_cumulative/population)*100 AS percent_vaccinated
+FROM pop_vs_vac
+
+
